@@ -1,0 +1,38 @@
+#!/bin/bash
+ROOT_DIR=/root
+OUTPUT_FILENAME=${HOSTNAME}.tar.gz
+RELEASE_FILENAME=${HOSTNAME}-release.tar.gz
+TEMP_DIR=/var/tmpdir
+DESTINATION_DIR=${TEMP_DIR}/${HOSTNAME}
+ERROR_FILE=${DESTINATION_DIR}/erros.txt
+
+if [ ! -d ${TEMP_DIR} ]; then
+	mkdir -p ${DESTINATION_DIR}
+fi 
+
+EXECS=`pgrep $0 | wc -l`
+if [ ${EXECS} -gt 2 ]; then
+        echo "Ja existe um processo em execucao ${GET_DATE}" >> ${ERROR_FILE}
+        exit 1
+fi
+
+cp -ra /etc ${DESTINATION_DIR} 2> ${ERROR_FILE}
+tar cf - /etc 2> /dev/null | md5sum > ${DESTINATION_DIR}/etc.md5sum
+cp -ra /root ${DESTINATION_DIR} 2> ${ERROR_FILE}
+tar cf - /root 2> /dev/null | md5sum > ${DESTINATION_DIR}/root.md5sum
+iptables-save > ${DESTINATION_DIR}/root/iptables_executando 2> ${ERROR_FILE}
+crontab -l >> ${DESTINATION_DIR}/root/crontab 2> ${ERROR_FILE}
+ip addr >> ${DESTINATION_DIR}/root/ifconfig 2> ${ERROR_FILE}
+
+cd ${TEMP_DIR}
+tar czf ${ROOT_DIR}/${OUTPUT_FILENAME} ${HOSTNAME}
+
+cd ${ROOT_DIR}
+md5sum ${OUTPUT_FILENAME} >> ${HOSTNAME}.md5sum
+tar czf ${RELEASE_FILENAME} ${OUTPUT_FILENAME} ${HOSTNAME}.md5sum
+rm ${OUTPUT_FILENAME} ${HOSTNAME}.md5sum
+
+rm -rf ${TEMP_DIR}
+
+echo "Finalizado! Envie o arquivo ${RELEASE_FILENAME} conforme descrito na atividade"
+exit 0
